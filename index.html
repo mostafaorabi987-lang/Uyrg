@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>متابع اللوحات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#0E2A2E;
+    --surface:#163A3F;
+    --surface-2:#1D474D;
+    --text:#F4F1E8;
+    --text-muted:#9FB8B7;
+    --accent:#E8A33D;
+    --accent-dark:#C6852A;
+    --ok:#4FB6A6;
+    --no:#E2665A;
+    --plate-bg:#F7F5EF;
+    --plate-text:#14181A;
+    --border:rgba(244,241,232,0.12);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:transparent;
+    font-family:'Tajawal',sans-serif;
+    color:var(--text);
+    display:flex;
+    justify-content:center;
+  }
+  .phone{
+    width:100%;
+    max-width:420px;
+    min-height:100vh;
+    background:linear-gradient(180deg,var(--bg) 0%,#0A2124 100%);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    overflow-x:hidden;
+  }
+  header.app-head{
+    padding:22px 20px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid var(--border);
+  }
+  header.app-head .brand{display:flex;align-items:center;gap:10px;}
+  header.app-head h1{
+    font-family:'Almarai',sans-serif;
+    font-weight:800;
+    font-size:20px;
+    margin:0;
+    letter-spacing:0.5px;
+  }
+  header.app-head p{margin:2px 0 0;color:var(--text-muted);font-size:12px;}
+  .badge-count{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--accent);
+    font-family:'Almarai',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    padding:6px 12px;
+    border-radius:999px;
+  }
+  main{flex:1;padding:16px 18px 100px;}
+  .screen{display:none;animation:fadein .25s ease;}
+  .screen.active{display:block;}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  /* Plate signature component */
+  .plate{
+    background:var(--plate-bg);
+    color:var(--plate-text);
+    border:3px solid var(--plate-text);
+    border-radius:10px;
+    padding:8px 14px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    position:relative;
+    font-family:'Almarai',sans-serif;
+    font-weight:800;
+    font-size:19px;
+    letter-spacing:2px;
+    direction:ltr;
+  }
+  .plate::before,.plate::after{
+    content:"";
+    position:absolute;
+    width:6px;height:6px;
+    background:var(--plate-text);
+    border-radius:50%;
+    top:5px;
+  }
+  .plate::before{right:5px;}
+  .plate::after{left:5px;}
+  .plate .flag{font-size:11px;font-weight:700;background:var(--plate-text);color:var(--plate-bg);padding:2px 5px;border-radius:4px;letter-spacing:0;}
+
+  .car-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .car-card .row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
+  .car-meta{font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.9;}
+  .car-meta b{color:var(--text);font-weight:500;}
+  .loc-row{
+    display:flex;align-items:center;gap:8px;
+    margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);
+  }
+  .loc-text{font-size:13px;color:var(--text-muted);flex:1;}
+  .loc-text.set{color:var(--ok);}
+
+  button{font-family:'Tajawal',sans-serif;cursor:pointer;border:none;}
+  .btn-primary{
+    background:var(--accent);color:#1a1204;font-weight:700;
+    padding:12px 18px;border-radius:12px;font-size:14px;
+  }
+  .btn-ghost{
+    background:var(--surface-2);color:var(--text);font-weight:500;
+    padding:10px 14px;border-radius:12px;font-size:13px;
+    border:1px solid var(--border);
+    display:flex;align-items:center;gap:6px;
+  }
+  .btn-full{width:100%;}
+
+  /* form */
+  label{display:block;font-size:13px;color:var(--text-muted);margin:14px 0 6px;}
+  input[type=text]{
+    width:100%;padding:13px 14px;border-radius:12px;
+    border:1px solid var(--border);background:var(--surface);
+    color:var(--text);font-family:'Tajawal',sans-serif;font-size:14px;
+  }
+  input[type=text]:focus{outline:2px solid var(--accent);}
+  .req{color:var(--no);}
+  .field-plate-preview{margin-top:10px;}
+
+  /* voice search */
+  .voice-wrap{display:flex;flex-direction:column;align-items:center;padding-top:10px;}
+  .mic-zone{position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+  .ring{position:absolute;border-radius:50%;border:2px solid var(--accent);opacity:0;}
+  .mic-zone.listening .ring{animation:pulse 1.6s ease-out infinite;}
+  .ring:nth-child(2){animation-delay:.4s !important;}
+  .ring:nth-child(3){animation-delay:.8s !important;}
+  @keyframes pulse{
+    0%{width:70px;height:70px;opacity:.7;}
+    100%{width:180px;height:180px;opacity:0;}
+  }
+  .mic-btn{
+    width:88px;height:88px;border-radius:50%;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 24px rgba(232,163,61,0.35);
+    z-index:2;transition:transform .15s ease;
+  }
+  .mic-btn:active{transform:scale(.94);}
+  .mic-zone.listening .mic-btn{background:var(--no);box-shadow:0 8px 24px rgba(226,102,90,0.4);}
+  .voice-status{font-family:'Almarai',sans-serif;font-weight:700;font-size:15px;margin-bottom:6px;text-align:center;}
+  .voice-sub{color:var(--text-muted);font-size:13px;text-align:center;margin-bottom:22px;}
+  .transcript{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;font-size:14px;color:var(--text-muted);width:100%;
+    min-height:20px;margin-bottom:16px;text-align:center;
+  }
+  .result-card{
+    width:100%;border-radius:var(--radius);padding:18px;margin-top:6px;
+    border:1px solid var(--border);
+  }
+  .result-card.found{background:rgba(79,182,166,0.12);border-color:var(--ok);}
+  .result-card.notfound{background:rgba(226,102,90,0.12);border-color:var(--no);}
+  .result-title{font-family:'Almarai',sans-serif;font-weight:800;font-size:16px;margin-bottom:8px;}
+  .result-card.found .result-title{color:var(--ok);}
+  .result-card.notfound .result-title{color:var(--no);}
+  .divider-or{display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:12px;margin:22px 0 6px;width:100%;}
+  .divider-or::before,.divider-or::after{content:"";flex:1;height:1px;background:var(--border);}
+  .manual-search{display:flex;gap:8px;width:100%;}
+  .manual-search input{flex:1;}
+
+  /* empty state */
+  .empty{
+    text-align:center;padding:50px 10px;color:var(--text-muted);
+  }
+  .empty svg{margin-bottom:14px;opacity:.6;}
+  .empty h3{font-family:'Almarai',sans-serif;color:var(--text);margin:0 0 6px;}
+
+  /* bottom nav */
+  nav.tabs{
+    position:absolute;bottom:0;left:0;right:0;
+    background:var(--surface);border-top:1px solid var(--border);
+    display:flex;padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+    max-width:420px;margin:0 auto;
+  }
+  nav.tabs button{
+    flex:1;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:6px 4px;color:var(--text-muted);font-size:11px;border-radius:10px;
+  }
+  nav.tabs button.active{color:var(--accent);}
+  nav.tabs svg{width:22px;height:22px;}
+
+  /* modal */
+  .overlay{
+    position:absolute;inset:0;background:rgba(6,15,17,0.72);
+    display:none;align-items:flex-end;z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .sheet{
+    background:var(--surface);width:100%;border-radius:22px 22px 0 0;
+    padding:20px;max-height:82vh;overflow-y:auto;
+  }
+  .sheet h2{font-family:'Almarai',sans-serif;font-size:17px;margin:0 0 4px;}
+  .sheet .sub{color:var(--text-muted);font-size:13px;margin-bottom:14px;}
+  #map{height:220px;border-radius:14px;margin:12px 0;background:var(--surface-2);}
+  .sheet-actions{display:flex;gap:10px;margin-top:16px;}
+  .sheet-actions button{flex:1;}
+  .toast{
+    position:absolute;bottom:90px;left:50%;transform:translateX(-50%);
+    background:var(--surface-2);border:1px solid var(--accent);
+    padding:10px 18px;border-radius:999px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .25s ease,bottom .25s ease;
+    z-index:80;white-space:nowrap;
+  }
+  .toast.show{opacity:1;bottom:100px;}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <header class="app-head">
+    <div class="brand">
+      <div>
+        <h1>متابع اللوحات</h1>
+        <p>سياراتك — بحث صوتي وموقع كل سيارة</p>
+      </div>
+    </div>
+    <div class="badge-count" id="countBadge">0 سيارات</div>
+  </header>
+
+  <main>
+
+    <!-- شاشة القائمة -->
+    <section class="screen" id="screen-list">
+      <div id="listWrap"></div>
+    </section>
+
+    <!-- شاشة الإضافة -->
+    <section class="screen" id="screen-add">
+      <label>رقم اللوحة <span class="req">(مطلوب)</span></label>
+      <input type="text" id="inPlate" placeholder="مثال: ٢٥٦ ط ص ب">
+      <div class="field-plate-preview" id="platePreview"></div>
+
+      <label>موديل السيارة</label>
+      <input type="text" id="inModel" placeholder="مثال: هيونداي النترا 2022">
+
+      <label>اللون</label>
+      <input type="text" id="inColor" placeholder="مثال: أبيض">
+
+      <label>ملاحظات</label>
+      <input type="text" id="inNote" placeholder="أي تفاصيل إضافية">
+
+      <button class="btn-primary btn-full" style="margin-top:22px" onclick="addCar()">حفظ السيارة</button>
+      <p id="addError" style="color:var(--no);font-size:13px;margin-top:8px;display:none;">من فضلك أدخل رقم اللوحة، هذا الحقل مطلوب لكل سيارة.</p>
+    </section>
+
+    <!-- شاشة البحث الصوتي -->
+    <section class="screen active" id="screen-voice">
+      <div class="voice-wrap">
+        <div class="mic-zone" id="micZone">
+          <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+          <button class="mic-btn" id="micBtn" onclick="toggleListening()">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#1a1204" stroke-width="2" stroke-linecap="round">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+              <path d="M19 11a7 7 0 0 1-14 0"/>
+              <path d="M12 18v3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="voice-status" id="voiceStatus">اضغط وابدأ الكلام</div>
+        <div class="voice-sub" id="voiceSub">قل رقم اللوحة اللي عايز تتأكد منها</div>
+        <div class="transcript" id="transcript">لسه مفيش كلام مسجّل</div>
+        <div id="resultZone"></div>
+
+        <div class="divider-or">تقدر تعدّل النص وتضغط بحث لو الكتابة مش مظبوطة</div>
+        <div class="manual-search">
+          <input type="text" id="manualPlate" placeholder="اكتب رقم اللوحة يدويًا">
+          <button class="btn-primary" onclick="searchPlate(document.getElementById('manualPlate').value)">بحث</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabs">
+    <button class="tab-btn" data-tab="list" onclick="showTab('list')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      سياراتي
+    </button>
+    <button class="tab-btn active" data-tab="voice" onclick="showTab('voice')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/></svg>
+      بحث صوتي
+    </button>
+    <button class="tab-btn" data-tab="add" onclick="showTab('add')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      إضافة سيارة
+    </button>
+  </nav>
+
+  <div class="overlay" id="locOverlay">
+    <div class="sheet">
+      <h2 id="locSheetTitle">تحديد موقع السيارة</h2>
+      <div class="sub">اضغط على الخريطة لتحديد المكان، أو استخدم موقعك الحالي</div>
+      <div id="map"></div>
+      <button class="btn-ghost btn-full" onclick="useMyLocation()">📍 استخدام موقعي الحالي</button>
+      <label>أو اكتب العنوان يدويًا</label>
+      <input type="text" id="locAddress" placeholder="مثال: أمام نادي بني سويف">
+      <div class="sheet-actions">
+        <button class="btn-ghost" style="flex:0 0 auto;padding:12px 20px" onclick="closeLocSheet()">إلغاء</button>
+        <button class="btn-primary" onclick="saveLocation()">حفظ الموقع</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ------------ الحالة (بدون تخزين دائم — تُعاد للبداية عند تحديث الصفحة) ------------ */
+let cars = [
+  {id:1, plate:"٢٥٦ ط ص ب", model:"تويوتا كورولا 2021", color:"فضي", note:"", location:null},
+  {id:2, plate:"٨٨٩ ن هـ", model:"هيونداي إلنترا 2022", color:"أبيض", note:"عربية الشغل", location:{lat:29.0744,lng:31.0979,address:"وسط مدينة بني سويف"}},
+  {id:3, plate:"١٣٤ س ج د", model:"نيسان صني", color:"أحمر", note:"", location:null},
+  {id:4, plate:"٤٤٧ م ع", model:"كيا سبورتاج 2020", color:"أزرق", note:"", location:null},
+  {id:5, plate:"٩٢٠ ب هـ ن", model:"شيفروليه أفيو", color:"رصاصي", note:"عربية الأجرة", location:{lat:29.0800,lng:31.1000,address:"ميدان بني سويف"}},
+  {id:6, plate:"٦١٣ ح ف", model:"تويوتا فورتشنر", color:"أسود", note:"", location:null},
+  {id:7, plate:"٣٠٥ ر ص ط", model:"سكودا أوكتافيا 2019", color:"أبيض", note:"", location:null},
+  {id:8, plate:"٧٧٨ ن ع ب", model:"رينو لوجان", color:"عنابي", note:"عربية أختي", location:null},
+  {id:9, plate:"٤٥٢ س هـ", model:"هوندا سيفيك 2023", color:"فضي", note:"", location:{lat:29.0700,lng:31.0900,address:"شارع الجمهورية"}},
+  {id:10, plate:"٨٦٤ ط ج د", model:"ميتسوبيشي لانسر", color:"أزرق غامق", note:"", location:null},
+  {id:11, plate:"١٩٧ م ن", model:"فيات تيبو 2021", color:"أبيض", note:"", location:null},
+  {id:12, plate:"٥٣٠ ب ع ر", model:"بيجو 301", color:"بيج", note:"عربية بابا", location:null},
+];
+let nextId = 13;
+let selectedCarId = null;
+let map, marker, tempLatLng = null;
+
+/* ------------ أدوات مساعدة ------------ */
+const arabicIndic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+function toArabicDigits(str){
+  return String(str).replace(/[0-9]/g, d => arabicIndic[d]);
+}
+function normalizePlate(str){
+  // تحويل الأرقام العربية والهندية لأرقام غربية، وإزالة أي رموز غير الحروف/الأرقام العربية
+  let s = String(str).trim();
+  s = s.replace(/[٠-٩]/g, d => String(arabicIndic.indexOf(d)));
+  s = s.replace(/[^0-9a-zA-Zء-ي]/g,'');
+  return s.toLowerCase();
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ------------ التبويبات ------------ */
+function showTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+
+/* ------------ عرض القائمة ------------ */
+function renderList(){
+  document.getElementById('countBadge').textContent = cars.length + (cars.length===1?' سيارة':' سيارات');
+  const wrap = document.getElementById('listWrap');
+  if(cars.length===0){
+    wrap.innerHTML = `<div class="empty">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#9FB8B7" stroke-width="1.5"><path d="M3 13l2-6a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 6M3 13v5a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-5M3 13h18"/></svg>
+      <h3>لا توجد سيارات بعد</h3>
+      <p>اضغط "إضافة سيارة" من الأسفل وابدأ بإدخال رقم اللوحة</p>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = cars.map(c => `
+    <div class="car-card">
+      <div class="row-top">
+        <span class="plate">${toArabicDigits(c.plate)}<span class="flag">مصر</span></span>
+        <button class="btn-ghost" onclick="openLocSheet(${c.id})">📍 ${c.location? 'تعديل الموقع' : 'تحديد الموقع'}</button>
+      </div>
+      <div class="car-meta">
+        ${c.model? `<div><b>الموديل:</b> ${c.model}</div>`:''}
+        ${c.color? `<div><b>اللون:</b> ${c.color}</div>`:''}
+        ${c.note? `<div><b>ملاحظات:</b> ${c.note}</div>`:''}
+      </div>
+      <div class="loc-row">
+        <span class="loc-text ${c.location?'set':''}">
+          ${c.location ? '📍 '+ (c.location.address || (c.location.lat.toFixed(4)+', '+c.location.lng.toFixed(4))) : 'لم يتم تحديد موقع لهذه السيارة بعد'}
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ------------ إضافة سيارة ------------ */
+document.getElementById('inPlate').addEventListener('input', e=>{
+  const v = e.target.value.trim();
+  document.getElementById('platePreview').innerHTML = v ? `<span class="plate">${toArabicDigits(v)}<span class="flag">مصر</span></span>` : '';
+});
+function addCar(){
+  const plate = document.getElementById('inPlate').value.trim();
+  const err = document.getElementById('addError');
+  if(!plate){
+    err.style.display='block';
+    document.getElementById('inPlate').focus();
+    return;
+  }
+  err.style.display='none';
+  cars.push({
+    id: nextId++,
+    plate,
+    model: document.getElementById('inModel').value.trim(),
+    color: document.getElementById('inColor').value.trim(),
+    note: document.getElementById('inNote').value.trim(),
+    location: null
+  });
+  ['inPlate','inModel','inColor','inNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('platePreview').innerHTML='';
+  renderList();
+  showToast('تم حفظ السيارة بنجاح');
+  showTab('list');
+}
+
+/* ------------ البحث (صوتي ويدوي) ------------ */
+function searchPlate(rawText){
+  const q = normalizePlate(rawText);
+  document.getElementById('resultZone').innerHTML='';
+  if(!q){
+    return;
+  }
+  const match = cars.find(c => normalizePlate(c.plate) === q || normalizePlate(c.plate).includes(q) || q.includes(normalizePlate(c.plate)));
+  const zone = document.getElementById('resultZone');
+  if(match){
+    zone.innerHTML = `
+      <div class="result-card found">
+        <div class="result-title">✔ السيارة موجودة في قائمتك</div>
+        <div class="plate" style="margin-bottom:10px">${toArabicDigits(match.plate)}<span class="flag">مصر</span></div>
+        <div class="car-meta">
+          ${match.model? `<div><b>الموديل:</b> ${match.model}</div>`:''}
+          ${match.location ? `<div><b>الموقع:</b> ${match.location.address || 'محدد على الخريطة'}</div>` : `<div>لم يتم تحديد موقع لها بعد</div>`}
+        </div>
+        <button class="btn-primary btn-full" style="margin-top:14px" onclick="openLocSheet(${match.id})">📍 ${match.location? 'تعديل الموقع' : 'تحديد موقع السيارة'}</button>
+      </div>`;
+  }else{
+    zone.innerHTML = `
+      <div class="result-card notfound">
+        <div class="result-title">✕ السيارة غير موجودة</div>
+        <div>لا توجد سيارة بهذا الرقم في قائمتك، يمكنك إضافتها من تبويب "إضافة سيارة"</div>
+      </div>`;
+  }
+}
+
+/* ------------ التعرف على الصوت ------------ */
+let recognition = null;
+let isListening = false;
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(SpeechRecognitionAPI){
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = 'ar-EG';
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('micZone').classList.add('listening');
+    document.getElementById('voiceStatus').textContent = 'بيسمعك دلوقتي...';
+    document.getElementById('voiceSub').textContent = 'قول رقم اللوحة بوضوح';
+  };
+  recognition.onresult = (event) => {
+    let text = '';
+    let isFinal = false;
+    for(let i=0;i<event.results.length;i++){
+      text += event.results[i][0].transcript;
+      if(event.results[i].isFinal) isFinal = true;
+    }
+    document.getElementById('transcript').textContent = text;
+    document.getElementById('manualPlate').value = text;
+    if(isFinal){
+      searchPlate(text);
+    }
+  };
+  recognition.onerror = (event) => {
+    document.getElementById('voiceStatus').textContent = 'حصلت مشكلة في السماع';
+    document.getElementById('voiceSub').textContent = event.error === 'not-allowed' ? 'من فضلك اسمح باستخدام الميكروفون' : 'جرّب مرة تانية';
+  };
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('micZone').classList.remove('listening');
+    document.getElementById('voiceStatus').textContent = 'اضغط وابدأ الكلام';
+    document.getElementById('voiceSub').textContent = 'قل رقم اللوحة اللي عايز تتأكد منها';
+  };
+}else{
+  document.getElementById('voiceStatus').textContent = 'المتصفح لا يدعم البحث الصوتي';
+  document.getElementById('voiceSub').textContent = 'استخدم البحث اليدوي بالأسفل، أو جرّب متصفح Chrome';
+}
+
+function toggleListening(){
+  if(!SpeechRecognitionAPI){
+    showToast('البحث الصوتي غير مدعوم في هذا المتصفح، استخدم البحث اليدوي');
+    return;
+  }
+  if(isListening){
+    recognition.stop();
+  }else{
+    document.getElementById('resultZone').innerHTML = '';
+    document.getElementById('transcript').textContent = 'لسه مفيش كلام مسجّل';
+    try{ recognition.start(); }catch(e){}
+  }
+}
+
+/* ------------ تحديد الموقع ------------ */
+function openLocSheet(carId){
+  selectedCarId = carId;
+  const car = cars.find(c=>c.id===carId);
+  document.getElementById('locSheetTitle').textContent = `تحديد موقع السيارة ${car.plate}`;
+  document.getElementById('locAddress').value = car.location?.address || '';
+  document.getElementById('locOverlay').classList.add('open');
+
+  setTimeout(()=>{
+    const startLatLng = car.location ? [car.location.lat, car.location.lng] : [29.0744, 31.0979]; // بني سويف افتراضيًا
+    if(!map){
+      map = L.map('map').setView(startLatLng, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      map.on('click', e => setMarker(e.latlng));
+    }else{
+      map.setView(startLatLng, 13);
+    }
+    if(marker) map.removeLayer(marker);
+    marker = null;
+    tempLatLng = null;
+    if(car.location){
+      setMarker(L.latLng(car.location.lat, car.location.lng));
+    }
+    map.invalidateSize();
+  }, 60);
+}
+function setMarker(latlng){
+  tempLatLng = latlng;
+  if(marker){ marker.setLatLng(latlng); }
+  else{ marker = L.marker(latlng, {draggable:true}).addTo(map); marker.on('dragend', e=>{ tempLatLng = e.target.getLatLng(); }); }
+}
+function useMyLocation(){
+  if(!navigator.geolocation){
+    showToast('المتصفح لا يدعم تحديد الموقع الحالي');
+    return;
+  }
+  showToast('جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
+      map.setView(ll, 15);
+      setMarker(ll);
+      showToast('تم تحديد موقعك الحالي');
+    },
+    err => showToast('تعذّر الوصول لموقعك، حدّده يدويًا على الخريطة')
+  );
+}
+function saveLocation(){
+  const car = cars.find(c=>c.id===selectedCarId);
+  const address = document.getElementById('locAddress').value.trim();
+  if(tempLatLng){
+    car.location = {lat: tempLatLng.lat, lng: tempLatLng.lng, address};
+  }else if(address){
+    car.location = {lat: car.location?.lat || 29.0744, lng: car.location?.lng || 31.0979, address};
+  }else{
+    showToast('حدد نقطة على الخريطة أو اكتب عنوانًا');
+    return;
+  }
+  closeLocSheet();
+  renderList();
+  showToast('تم حفظ موقع السيارة');
+}
+function closeLocSheet(){
+  document.getElementById('locOverlay').classList.remove('open');
+  selectedCarId = null;
+}
+
+/* ------------ التشغيل الأولي ------------ */
+renderList();
+</script>
+</body>
+</html>
